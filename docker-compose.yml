@@ -1,0 +1,72 @@
+version: '3.8'
+
+networks:
+  kafka-network:
+    driver: bridge
+
+services:
+  # Zookeeper Service
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - kafka-network
+    environment:
+      ZOO_MY_ID: 1
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper
+
+  # Kafka Broker Service
+  kafka:
+    image: wurstmeister/kafka:latest
+    container_name: kafka-broker
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://host.docker.internal:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_DIRS: /kafka/logs
+    networks:
+      - kafka-network
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka_data:/var/lib/kafka
+
+  # Flink JobManager Service
+  jobmanager:
+    image: flink:latest
+    container_name: flink-jobmanager
+    ports:
+      - "8081:8081"  # Flink Web UI   
+      - "6123:6123"  # Flink JobManager RPC
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: jobmanager
+    command: ["jobmanager"]
+    networks:
+      - kafka-network
+    restart: always
+
+  # Flink TaskManager Service
+  taskmanager:
+    image: flink:latest
+    container_name: flink-taskmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: jobmanager
+    command: ["taskmanager"]
+    depends_on:
+      - jobmanager
+    networks:
+      - kafka-network
+    restart: always
+
+volumes:
+  zookeeper_data:
+  kafka_data:
