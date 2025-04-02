@@ -1,0 +1,1 @@
+Near real-time stream processing of user session monitoring. This user case simulates the monitoring of users interacting with an e-commerce platform. Our job is to monitor and manage the number of active user sessions and continuously output results (e.g., alerts).  
